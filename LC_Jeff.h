@@ -246,7 +246,6 @@ Serial.println((byte)x[n-1]);
     char buf[8*sizeof(unsigned int) + 1];
     char *str = buf + sizeof(buf) - 1;
     *str = '\0';
-
     do {
       unsigned int m = n;
       n /= base;
@@ -268,7 +267,6 @@ Serial.println((byte)x[n-1]);
     char buf[8*sizeof(unsigned long) + 1];
     char *str = buf + sizeof(buf) - 1;
     *str = '\0';
-
     do {
       unsigned long m = n;
       n /= base;
@@ -280,16 +278,52 @@ Serial.println((byte)x[n-1]);
   }
   inline size_t print(long n, int base = DEC) {
     if(n<0)
-      return print('-') + print( (unsigned int)n*-1, base );
-    return print( (unsigned int)n, base );
+      return print('-') + print( (unsigned long)n*-1, base );
+    return print( (unsigned long)n, base );
   }
+  inline size_t print(double x, int digits = 2){
+    size_t n = 0;
+
+  // Check float options
+    if (isnan(x)) return print(F("nan"));
+    if (isinf(x)) return print(F("inf"));
+    if (x > 4294967040.0 || x <-4294967040.0) return print (F("ovf"));  // constant determined empirically
+//    if (number <-4294967040.0) return print ("ovf");  // constant determined empirically
+
+    if(x < 0.0){
+      n += print('-');
+      x = -x;
+    }
+    unsigned long wholes = (unsigned long)x;
+    n += print(wholes);
+    if(digits < 1) return n; // If no precision, just return here
+    
+    n += print('.');
+    x -= wholes; // Subtract wholes from, so x is just the decimal part;
+    unsigned long multiplier = 10; // How much to multiply x to get digits to whole numbers
+    for(uint8_t i=1; i<digits; ++i)
+      multiplier *= 10; // Crude way to do this, but should be fine for default digits=2
+    n += print((unsigned long)(x*multiplier+0.5));
+    
+    
+    
+    //unsigned long 
+    /*
+    double rounding = 0.5;
+    for (uint8_t i=0; i<digits; ++i)
+      rounding /= 10.0;
+
+    x += rounding;
+
+    unsigned long int_part = (unsigned long)x;
+    double remainder = number - (double)int_part;*/
+    return n;
+  }
+  
   /*
+  TO IMPLEMENT
   
   
-  
-  size_t print(long, int = DEC);
-  size_t print(unsigned long, int = DEC);
-  size_t print(double, int = 2);
   size_t print(const Printable_O&);
   */
 

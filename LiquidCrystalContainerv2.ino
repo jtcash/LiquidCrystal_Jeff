@@ -51,6 +51,12 @@ void testPrintNumbers() {
   lcd.print((unsigned char)'A', 10);
   lcd.print(' '); 
   lcd.print(-1234, 16);
+
+  lcd.setCursor(0,1);
+  lcd.print(-0.5678);
+  lcd.print(' ');
+  lcd.print(12.2345,0);
+  
   
 
   lcd.update();
