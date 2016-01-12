@@ -66,6 +66,48 @@ void testPrintNumbers() {
   lcd.setCursor(4,0);
   lcd.println("JEFF");
   lcd.update();
+
+  delay(1000);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  delay(1000);
+  lcd.update();
+  lcd.setCursor(0,0);
+  lcd.print(F("0123456789012345"));
+  lcd.update();
+  lcd.blink();
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayRight();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
+  lcd.scrollDisplayLeft();
+  delay(500);
   //
 }
 void basicTest(){

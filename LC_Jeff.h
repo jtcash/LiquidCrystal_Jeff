@@ -22,10 +22,15 @@
  * because of this, I can skip some "+="s and just do "++"s
  */
 
-#define LCD_WIDTH 16
-#define LCD_HEIGHT 2
+//#define LCD_WIDTH 16 // No longer needed, now is dynamic
+//#define LCD_HEIGHT 2
 
-#define INITIALIZE_LIST initialized(false), cols(0), rows(0), cursorX(0), cursorY(0)
+#define LCD_DDRAM_BYTES 80 // The amount of bytes of ram the LCD Driver has for
+// storing characters on the screen. 80 is the default for HD44780, KS0066 and
+// compatible LCD drivers
+
+#define INITIALIZE_LIST initialized(false), cols(0), rows(0), cursorX(0), cursorY(0),\
+showCursor(false), showBlink(false)
 #define WARN_UNIMPLEMENTED() \
 Serial.print(F("WARNING: called unimplemented function:\n\t"));\
 Serial.println(__PRETTY_FUNCTION__)
@@ -87,7 +92,7 @@ Serial.println((byte)x[n-1]);
       // If it's already intitialized, delete the line arrays
       //if the cols or rows differ, and then reallocate them
       if(cols != col || rows != row){
-        for(int i=0; i<LCD_HEIGHT; ++i){
+        for(int i=0; i<rows; ++i){
           delete[] lines[i];
           delete[] slines[i];
         }
@@ -122,10 +127,20 @@ Serial.println((byte)x[n-1]);
 
 
 
+  // SHOULD I HAVE IT AUTOUPDATE FOR COMMANDS LIKE CLEAR?
+  // Probably not because the whole point is that this container is manual
+  //update.
+  inline void clear(){ 
+    // Clear line arrays and set cursor to home // TODO: Blinking and underline stop too?
+    clearLines();
+    setCursor(0,0);
+  }
 
-  inline void clear(){ WARN_UNIMPLEMENTED(); lcd.clear(); }
-
-  inline void home(){ WARN_UNIMPLEMENTED(); lcd.home(); }
+  inline void home(){ 
+    // Set cursor to home.
+    setCursor(0,0);
+//    WARN_UNIMPLEMENTED(); lcd.home(); 
+  }
 
   
   inline void noDisplay(){ WARN_UNIMPLEMENTED(); lcd.noDisplay(); }
@@ -157,12 +172,13 @@ Serial.println((byte)x[n-1]);
 
   inline void createChar(uint8_t location, uint8_t charmap[]){ WARN_UNIMPLEMENTED(); lcd.createChar(location, charmap); }
 
-  inline void setCursor(uint8_t col, uint8_t row){ 
-    if(col != cursorX || row != cursorY){
-      lcd.setCursor(col, row);
-      cursorX = col;
-      cursorY = row;
-    }
+  inline void setCursor(uint8_t col, uint8_t row){
+    if(col != cursorX || row != cursorY)
+      if(col < cols && row < rows){ // See if I can optimize these conditionals
+        lcd.setCursor(col, row);
+        cursorX = col;
+        cursorY = row;
+      }
   }
 
   inline void command(uint8_t value){ WARN_UNIMPLEMENTED(); lcd.command(value); }
@@ -294,17 +310,18 @@ Serial.println((byte)x[n-1]);
 
 #define TEST_PRINT_SPLIT true // Use either the ul or uc print() based on digit number
   inline size_t print(double x, int digits = 2){
-    size_t n = 0;
-
-  // Check float options
-    if (isnan(x)) return print(F("nan"));
+    size_t n;
+    
+    if (isnan(x)) return print(F("nan")); // Check float options
     if (isinf(x)) return print(F("inf"));
-    if (x > 4294967040.0 || x <-4294967040.0) return print (F("ovf"));  // constant determined empirically
-//    if (number <-4294967040.0) return print ("ovf");  // constant determined empirically
-
+    if (x > 4294967040.0 || x <-4294967040.0) return print (F("ovf"));  
+    // constant determined empirically
     if(x < 0.0){
-      n += print('-');
+      print('-'); /// n += print('-');
+      n = 1;
       x = -x;
+    } else {
+      n = 0;
     }
     unsigned long wholes = (unsigned long)x;
     n += print(wholes);
@@ -326,10 +343,12 @@ Serial.println((byte)x[n-1]);
     // Add 0.5 to round to the nearest digit
 #endif
   }
+
   
   inline size_t print(const Printable& x){
     return x.printTo(*this);
   }
+
   
   /* Just in case I forgot to implement some of the print functions, here
    * are some template functions to catch any leftovers */
@@ -349,11 +368,16 @@ Serial.println((byte)x[n-1]);
 /////////////////////////////////////////////////////////////////////////
 ///////////////////   PRINTLN   /////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-  
+
   /* I will add some new functionality with the println function.
    * using println() will make the corresponding call to print(), but then
    * clear the remaining cells in the line.
    */
+  inline size_t println(){
+    if(cursorX < cols)
+      memset(lines[cursorY]+cursorX, ' ', cols - cursorX);
+    return 1;
+  }
   template<typename T>
   inline size_t println(T data){
     //WARN_UNIMPLEMENTED();
@@ -432,6 +456,9 @@ Serial.println((byte)x[n-1]);
   // updates the LCD to show changes since last update. Needs to be called manually
   inline void update(){ // TODO: Optimize this
     // Iterate through the rows, grabbing the line and sline arrays
+
+    uint8_t oldCursorX = cursorX;
+    uint8_t oldCursorY = cursorY;
     for(uint8_t y=0; y<rows; ++y){
       char *line = lines[y];
       char *sline = slines[y];
@@ -445,14 +472,25 @@ Serial.println((byte)x[n-1]);
         }
       }
     }
+    setCursor(oldCursorX, oldCursorY);
   }
 
-  inline void clearLineArrays(){
-    for(uint8_t y=0; y<rows; ++y){
-      memset(slines[y], ' ', cols);
+
+  
+  inline void clearLines(){
+    for(uint8_t y=0; y<rows; ++y)
       memset(lines[y], ' ', cols);
-    }
   }
+  inline void clearSLines(){
+    for(uint8_t y=0; y<rows; ++y)
+      memset(slines[y], ' ', cols);
+  }
+//  inline void clearLineArrays(){
+//    for(uint8_t y=0; y<rows; ++y){
+//      memset(slines[y], ' ', cols);
+//      memset(lines[y], ' ', cols);
+//    }
+//  }
 
   
   
@@ -507,10 +545,14 @@ private:
   char **lines;
   char **slines; // The lines currently on the screen
   bool initialized;// True if the container has been initialized
+  
   uint8_t cols;    // Number of cols in LCD
   uint8_t rows;    // Number of rows in LCD
   uint8_t cursorX; // Current x location of LCD cursor
   uint8_t cursorY; // Current y location of LCD cursor
+
+  bool showCursor;
+  bool showBlink;
 
   // Now implement all of the LiquidCrystal methods as inlines and then start optimizing
     
