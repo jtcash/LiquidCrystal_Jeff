@@ -71,22 +71,6 @@ PRINT_SPEEDUP(defResults[testi], optResults[testi]);   ++testi;
    opt.clear();
    opt.print(F("Finished testing"));
       
-//DO_TEST(testDummyRandom);
-    /*
-    Serial.println(defResults[0]);
-    Serial.println(testNames[0]);
-
-    //DO_TEST_OPT(testSimplePrint, opt);
-    Serial.println(optResults[0]);
-    Serial.println(testNames[0]);
-    */
-   // testSimplePrint(def);
-    //testSimplePrint(opt);
-  }
-  
-  //Def def;
-  //Opt opt;
-  //Def lcd;
 
   template<typename Lcd>
   unsigned long testSimplePrint(Lcd &lcd){
@@ -98,7 +82,7 @@ PRINT_SPEEDUP(defResults[testi], optResults[testi]);   ++testi;
       lcd.print("TEST");
       lcd.setCursor(0,1);
       lcd.print("TSETEST");
-      
+      Serial.println(typeof(lcd));
     }
     return micros() - t0;
     

@@ -6,11 +6,18 @@
 #include "Print.h"
 #include "Printable.h"
 
+extern void printMem();
 // Made for a 16x2 LCD Display
 /* TODO:
  *  - Figure out how to optimally make each line array hold 80 characters
  *  in order to accomodate the ram of the display and match the default implementation  
  *  - Find a way to implement rightToLeft and leftToRight
+ *  
+ *  - Make scroll left and right change a member variable which holds the current scroll
+ *  amount of the screen.
+ *  - Implement autoscroll for when scroll is enabled. Should be as simple as calling
+ *  scrollDisplayLeft when the cursor is at the right of the screen, but it wont be
+ *  that simple in practice.
  */
 
 //#include <string.h>
@@ -32,6 +39,9 @@
 #define LCD_DDRAM_BYTES 80 // The amount of bytes of ram the LCD Driver has for
 // storing characters on the screen. 80 is the default for HD44780, KS0066 and
 // compatible LCD drivers
+
+#define pl() Serial.print(F("Line : "));Serial.println(__LINE__); delay(10);
+
 
 #define INITIALIZE_LIST initialized(false), cols(0), rows(0), cursorX(0), cursorY(0),\
 showCursor(false), showBlink(false), notDisplayed(false), scrollTrick(0)
@@ -85,7 +95,8 @@ public:
     // Will later set the timer to update the screen n times/second
   }
 
-
+#define echo(x) Serial.print('\t'); Serial.print(F(#x)); Serial.print(F(" = "));\
+Serial.println(x) 
 #define printArray(x, n) Serial.print(F(#x)); Serial.print(F(":\t"));\
 for(int i=0; i<n-1; ++i) { Serial.print((byte)x[i]); Serial.print(','); }\
 Serial.println((byte)x[n-1]);
@@ -94,6 +105,9 @@ Serial.println((byte)x[n-1]);
     lcd.begin(col, row, charsize);
     beginSetup(col, row);
   }
+#define SLINES_NEW_CHAR '\0'
+
+  // Create the line arrays for a number of cols and rows
   void beginSetup(uint8_t col, uint8_t row){
     if(initialized){
       // If it's already intitialized, delete the line arrays
@@ -107,23 +121,20 @@ Serial.println((byte)x[n-1]);
         delete[] slines;
       }
     } else {
-      lines = new char*[row];
-      slines = new char*[row];
-      for(int i=0; i<row; ++i){
-        lines[i] = new char[col];
-        slines[i] = new char[col];
-      }
       initialized = true;
     }
-
+    lines = new char*[row];
+    slines = new char*[row];
+    for(int i=0; i<row; ++i){
+      lines[i] = new char[col];
+      slines[i] = new char[col];
+    }
     // Clear the line arrays
     for(int i=0; i<row; ++i){
       memset(lines[i], ' ', col);
-      memset(slines[i], ' ', col);
+      memset(slines[i], SLINES_NEW_CHAR, col);
     }
-      
-    //printArray(lines[0], col); printArray(lines[1], col);
-    //printArray(slines[0], col); printArray(slines[1], col);
+
     cursorX = 0;
     cursorY = 0;
     cols = col;
@@ -137,12 +148,16 @@ Serial.println((byte)x[n-1]);
   //update.
   inline void clear(){ 
     // Clear line arrays and set cursor to home // TODO: Blinking and underline stop too?
+    if(scrollTrick)
+      lcd.home();
     clearLines();
     setCursor(0,0);
   }
 
   inline void home(){ 
     // Set cursor to home.
+    if(scrollTrick)
+      lcd.home();
     setCursor(0,0);
 //    WARN_UNIMPLEMENTED(); lcd.home(); 
   }
@@ -202,8 +217,40 @@ Serial.println((byte)x[n-1]);
   // for scrolling, which would do something similar to this->begin(40,2), without actually
   // calling the lcd's begin(). That could trick my implementation into supporting scrolling.
   // There should be better ways of doing this, however.
-  inline void scrollDisplayLeft(){ WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayLeft();*/ }
-  inline void scrollDisplayRight(){ WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayRight();*/ }
+  //
+  // Now works after enableScroll has been called, but when scroll is enabled, performance
+  // is greatly reduced
+  inline void scrollDisplayLeft(){ 
+    if(scrollTrick)
+      lcd.scrollDisplayLeft();
+    else {
+      WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayLeft();*/ 
+      Serial.println("Scroll is currently disabled");
+    }
+  }
+  inline void scrollDisplayRight(){ 
+    
+    if(scrollTrick)
+      lcd.scrollDisplayRight();
+    else {
+      WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayRight();*/ 
+      Serial.println("Scroll is currently disabled");
+    }
+  }
+
+  inline void enableScroll(){
+    Serial.println(__PRETTY_FUNCTION__);
+    uint8_t numCols = LCD_DDRAM_BYTES/rows;
+    scrollTrick = numCols - cols;
+    beginSetup(numCols, rows);
+  }
+  inline void disableScroll(){
+    if(scrollTrick){
+      beginSetup(cols - scrollTrick, rows);
+      scrollTrick = 0;
+    }
+  }
+
   
   // Changing text direction is currently unsupported, partly because of the strange way
   // the default library handles it. For some reason, if you write chars rightToLeft

@@ -26,9 +26,9 @@ void setup() {
   //lcd.begin(16,2);
   //lcd.print(F("TEST"));
   //lcd.write("test");  
-  testPrintNumbers();
+  //testPrintNumbers();
   //basicTest();
-  //tester.runTest(lcd_old, lcd);
+  tester.runTest(lcd_old, lcd);
  /* lcd.begin(16, 2);
   lcd.clear();
   lcd.print("HI");
@@ -38,8 +38,9 @@ void setup() {
   lcd_old.print("HI2");*/
   
 }
+#define pl() Serial.print(F("Line : "));Serial.println(__LINE__); delay(10);
 void testPrintNumbers() {
-  
+  printMem();
   LC_Jeff lcd(LCD_PINS);
   lcd.begin(16,2);
   lcd.print('A');
@@ -60,45 +61,28 @@ void testPrintNumbers() {
   //lcd.write(" test");
   
   
-
+  pl();
   lcd.update();
   delay(1000);
   lcd.setCursor(4,0);
-  lcd.println("JEFF");
+  lcd.println(F("JEFF"));
   lcd.update();
-
-  delay(1000);
   lcd.clear();
-  lcd.setCursor(0,0);
-  delay(1000);
+//  pl();
+//  printMem();
+//  pl();
+  
+  lcd.enableScroll();
+//  pl();
+//  delay(100);
+//  printMem();
+//  delay(100);
+  lcd.setCursor(14,0);
+  lcd.print(F("0123456"));
   lcd.update();
-  lcd.setCursor(0,0);
-  lcd.print(F("0123456789012345"));
-  lcd.update();
-  lcd.blink();
   lcd.scrollDisplayLeft();
   delay(500);
   lcd.scrollDisplayLeft();
-  delay(500);
-  lcd.scrollDisplayLeft();
-  delay(500);
-  lcd.scrollDisplayLeft();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
-  delay(500);
-  lcd.scrollDisplayRight();
   delay(500);
   lcd.scrollDisplayLeft();
   delay(500);
@@ -108,7 +92,7 @@ void testPrintNumbers() {
   delay(500);
   lcd.scrollDisplayLeft();
   delay(500);
-  //
+  lcd.home();
 }
 void basicTest(){
   
@@ -132,7 +116,20 @@ void basicTest(){
   lcd.update();
   //lcd.print("POOP");
 }
-
+void printMem(){
+  int avail = availableMemory();
+  Serial.print(F("Available Memory: "));
+  Serial.print(avail);
+  Serial.println(F("bytes"));
+  delay(10);
+}
+int availableMemory() {
+  int size = 2048; // Use 2048 with ATmega328
+  byte *buf;
+  while ((buf = (byte *) malloc(--size)) == NULL);
+  free(buf);
+  return size;
+}
 void loop() {
   // put your main code here, to run repeatedly:
 
