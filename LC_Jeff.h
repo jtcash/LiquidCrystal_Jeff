@@ -334,15 +334,50 @@ Serial.println((byte)x[n-1]);
   /* Just in case I forgot to implement some of the print functions, here
    * are some template functions to catch any leftovers */
   template<typename T>
-  inline void print(T data){
+  inline size_t print(T data){
     WARN_UNIMPLEMENTED();
-    lcd.print(data);
+    return lcd.print(data);
   }
   template<typename T, typename D>
-  inline void print(T data, D data2){
+  inline size_t print(T data, D data2){
     WARN_UNIMPLEMENTED();
-    lcd.print(data, data2);
+    return lcd.print(data, data2);
   }
+
+
+
+/////////////////////////////////////////////////////////////////////////
+///////////////////   PRINTLN   /////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+  
+  /* I will add some new functionality with the println function.
+   * using println() will make the corresponding call to print(), but then
+   * clear the remaining cells in the line.
+   */
+  template<typename T>
+  inline size_t println(T data){
+    //WARN_UNIMPLEMENTED();
+    size_t n = print(data);
+//    char *line = lines[cursorY];
+//    for(uint8_t i=cursorX; i<cols; ++i)
+//      line[i] = ' ';
+    if(cursorX < cols)
+      memset(lines[cursorY]+cursorX, ' ', cols - cursorX);
+    return n;
+  }
+  template<typename T, typename D>
+  inline size_t println(T data, D data2){
+    //WARN_UNIMPLEMENTED();
+    size_t n = print(data, data2);
+    if(cursorX < cols)
+      memset(lines[cursorY]+cursorX, ' ', cols - cursorX);
+//    char *line = lines[cursorY];
+//    for(uint8_t i=cursorX; i<cols; ++i)
+//      line[i] = ' ';
+    return n;
+  }
+
+
 
 
 
@@ -351,31 +386,28 @@ Serial.println((byte)x[n-1]);
 /////////////////////////////////////////////////////////////////////////
 ///////////////////   WRITE   ///////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
-
   
   // For now, only use the write functions for direct writing, 
   //do not change cursorX unless it seems necessary
   inline size_t write(char c){
-    // Figure out where lcd's write function is defined
     return lcd.write(c);
   }
-  inline size_t write(uint8_t c){
-    // Figure out where lcd's write function is defined
-    return lcd.write(c);
+  inline size_t write(uint8_t value){
+    return lcd.write(value);
   }
   
   inline size_t write(const char *str) {
     if(str == NULL) return 0;
-    uint8_t n = 0; // It seems unnecessary to use a size_t here, 
-    //unless you plan on writing >256 chars
-    // TODO: See if it's necessary to guard this so it won't write after
-    //char c;
-
+    const char *strOrig = str;
     while(*str)
-      n += write(*str++);
-      //if (str == NULL) return 0;
-      //return write((const uint8_t *)str, strlen(str));
-    //cursorX += n;
+      write(*str++);
+    return (size_t)(str - strOrig);
+  }
+
+  inline size_t write(const uint8_t *buffer, size_t size){
+    size_t n = 0;
+    while(size--) // Code taken from "Print.h"
+      n += write(*buffer++);
     return n;
   }
   
@@ -391,54 +423,20 @@ Serial.println((byte)x[n-1]);
     WARN_UNIMPLEMENTED();
     return lcd.write(data, data2);
   }
-  /*
-  inline size_t write(uint8_t data){
-    return lcd.write(data);
-  }*/
-  /*
-  
-  
-  
-  size_t print(unsigned char, int = DEC);
-  size_t print(int, int = DEC);
-  size_t print(unsigned int, int = DEC);
-  size_t print(long, int = DEC);
-  size_t print(unsigned long, int = DEC);
-  size_t print(double, int = 2);
-  size_t print(const Printable_O&);
+ 
 
-  size_t println(const __FlashStringHelper *);
-  size_t println(const String &s);
-  size_t println(const char[]);
-  size_t println(char);
-  size_t println(unsigned char, int = DEC);
-  size_t println(int, int = DEC);
-  size_t println(unsigned int, int = DEC);
-  size_t println(long, int = DEC);
-  size_t println(unsigned long, int = DEC);
-  size_t println(double, int = 2);
-  size_t println(const Printable_O&);
-  size_t println(void);
-*/
-
+///////////////////////////////////////////////////////////////////////
 
   
-  inline void testPrint(const char *str){
-    char *line = lines[cursorY];
-    uint8_t i = cursorX;
-    while(i<cols){
-      if(*str == 0) break;
-      line[i++] = *str++;
-    }
-    cursorX = i;
-    printArray(lines[cursorY], cols);
-    printArray(slines[cursorY], cols);
-  }
+
   // updates the LCD to show changes since last update. Needs to be called manually
-  inline void update(){
+  inline void update(){ // TODO: Optimize this
+    // Iterate through the rows, grabbing the line and sline arrays
     for(uint8_t y=0; y<rows; ++y){
       char *line = lines[y];
       char *sline = slines[y];
+      // Iterate across the line/sline arrays, updating the screen from lin if there
+      // is a difference between the two
       for(uint8_t x=0; x<cols; ++x){
         if(sline[x] != line[x]){
           setCursor(x,y);
@@ -457,10 +455,18 @@ Serial.println((byte)x[n-1]);
   }
 
   
-  LiquidCrystal *getLcdPtr(){
-    return &lcd;
+  
+  void testPrint(const char *str){
+    char *line = lines[cursorY];
+    uint8_t i = cursorX;
+    while(i<cols){
+      if(*str == 0) break;
+      line[i++] = *str++;
+    }
+    cursorX = i;
+    printArray(lines[cursorY], cols);
+    printArray(slines[cursorY], cols);
   }
-
   void serialDebug(){
     Serial.print(cursorX); Serial.print(','); Serial.println(cursorY);
   }

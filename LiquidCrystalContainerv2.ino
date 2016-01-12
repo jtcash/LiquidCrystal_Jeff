@@ -56,10 +56,17 @@ void testPrintNumbers() {
   lcd.print(-0.5678);
   lcd.print(' ');
   lcd.print(12.2345,0);
+
+  //lcd.write(" test");
   
   
 
   lcd.update();
+  delay(1000);
+  lcd.setCursor(4,0);
+  lcd.println("JEFF");
+  lcd.update();
+  //
 }
 void basicTest(){
   
