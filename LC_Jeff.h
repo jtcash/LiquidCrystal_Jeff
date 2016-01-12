@@ -3,6 +3,7 @@
 
 #include "LiquidCrystal.h"
 #include "Arduino.h"
+#include "Print.h"
 #include "Printable.h"
 
 // Made for a 16x2 LCD Display
@@ -16,6 +17,11 @@
 
 //figure out what to do with virtual write
 
+/* //////////////   NOTES: ///////////////////////
+ *  The LiquidCrystal::write(uint8_t) function always returns 0, assuming success. 
+ * because of this, I can skip some "+="s and just do "++"s
+ */
+
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 
@@ -24,7 +30,7 @@
 Serial.print(F("WARNING: called unimplemented function:\n\t"));\
 Serial.println(__PRETTY_FUNCTION__)
 
-class LC_Jeff {
+class LC_Jeff : Print {
 public:
 
   ~LC_Jeff(){
@@ -162,6 +168,9 @@ Serial.println((byte)x[n-1]);
   inline void command(uint8_t value){ WARN_UNIMPLEMENTED(); lcd.command(value); }
 
 
+/////////////////////////////////////////////////////////////////////////
+//////////////////    PRINT    //////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 
 ////////// Modify all prints to use this same formula. // Optimize this formula as well
   size_t print(const __FlashStringHelper *ifsh){
@@ -281,6 +290,9 @@ Serial.println((byte)x[n-1]);
       return print('-') + print( (unsigned long)n*-1, base );
     return print( (unsigned long)n, base );
   }
+
+
+#define TEST_PRINT_SPLIT true // Use either the ul or uc print() based on digit number
   inline size_t print(double x, int digits = 2){
     size_t n = 0;
 
@@ -303,39 +315,29 @@ Serial.println((byte)x[n-1]);
     unsigned long multiplier = 10; // How much to multiply x to get digits to whole numbers
     for(uint8_t i=1; i<digits; ++i)
       multiplier *= 10; // Crude way to do this, but should be fine for default digits=2
-    n += print((unsigned long)(x*multiplier+0.5));
+    // Use print(unsigned long) to print the decimal part.
     
-    
-    
-    //unsigned long 
-    /*
-    double rounding = 0.5;
-    for (uint8_t i=0; i<digits; ++i)
-      rounding /= 10.0;
-
-    x += rounding;
-
-    unsigned long int_part = (unsigned long)x;
-    double remainder = number - (double)int_part;*/
-    return n;
+#if TEST_PRINT_SPLIT
+    // If digits<3, use the unsigned char printer to print the digits
+    return n + (digits<3) ? print((unsigned char)(x*multiplier+0.5)) : \
+      print((unsigned long)(x*multiplier+0.5));
+#else
+    return n + print((unsigned long)(x*multiplier+0.5)); 
+    // Add 0.5 to round to the nearest digit
+#endif
   }
   
-  /*
-  TO IMPLEMENT
+  inline size_t print(const Printable& x){
+    return x.printTo(*this);
+  }
   
-  
-  size_t print(const Printable_O&);
-  */
-
-
-
-
+  /* Just in case I forgot to implement some of the print functions, here
+   * are some template functions to catch any leftovers */
   template<typename T>
   inline void print(T data){
     WARN_UNIMPLEMENTED();
     lcd.print(data);
   }
-
   template<typename T, typename D>
   inline void print(T data, D data2){
     WARN_UNIMPLEMENTED();
@@ -344,38 +346,11 @@ Serial.println((byte)x[n-1]);
 
 
 
-/// So calling write on individual characters is faster.
-// TODO: Implement unimplemented print functions and optimize the write const char * function
-  void test0(){
-    lcd.clear();
-    const char* testStr = "0123456789012345";
-    lcd.write(testStr);
-  }
-  void test1(){
-    lcd.clear();
-    const char *testStr = "0123456789012345";
-    const char *tstr = testStr;
-    while(*tstr)
-      lcd.write(*tstr++);
-  }
-  void testWriteSpeed(){
-    int i;
-    #define TEST_REPS 100
-    unsigned long t0 = micros();
-    for(i=0;i<TEST_REPS;++i)
-      test0();
 
-    unsigned long t1 = micros();
-    for(i=0;i<TEST_REPS;++i)
-      test1();
 
-    unsigned long t2 = micros();
-    Serial.print(F("testWriteSpeed\t"));
-    Serial.print(t1 - t0);
-    Serial.print('\t');
-    Serial.print(t2 - t1);
-  }
-
+/////////////////////////////////////////////////////////////////////////
+///////////////////   WRITE   ///////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 
   
   // For now, only use the write functions for direct writing, 
@@ -404,21 +379,16 @@ Serial.println((byte)x[n-1]);
     return n;
   }
   
-  
+  /* Just in case I forgot to implement some of the write functions, here
+   * are some template functions to catch any leftovers */
   template<typename T>
   inline size_t write(T data){
     WARN_UNIMPLEMENTED();
-    //uint8_t n = lcd.write(data);
-    //cursorX += n;
-    //return n;
     return lcd.write(data);
   }
   template<typename T, typename D>
   inline size_t write(T data, D data2){
     WARN_UNIMPLEMENTED();
-//    size_t n = lcd.write(data, data2);
-//    cursorX += n;
-//    return n;
     return lcd.write(data, data2);
   }
   /*
@@ -494,6 +464,38 @@ Serial.println((byte)x[n-1]);
   void serialDebug(){
     Serial.print(cursorX); Serial.print(','); Serial.println(cursorY);
   }
+  /// So calling write on individual characters is faster.
+// TODO: Implement unimplemented print functions and optimize the write const char * function
+  void test0(){
+    lcd.clear();
+    const char* testStr = "0123456789012345";
+    lcd.write(testStr);
+  }
+  void test1(){
+    lcd.clear();
+    const char *testStr = "0123456789012345";
+    const char *tstr = testStr;
+    while(*tstr)
+      lcd.write(*tstr++);
+  }
+  void testWriteSpeed(){
+    int i;
+    #define TEST_REPS 100
+    unsigned long t0 = micros();
+    for(i=0;i<TEST_REPS;++i)
+      test0();
+
+    unsigned long t1 = micros();
+    for(i=0;i<TEST_REPS;++i)
+      test1();
+
+    unsigned long t2 = micros();
+    Serial.print(F("testWriteSpeed\t"));
+    Serial.print(t1 - t0);
+    Serial.print('\t');
+    Serial.print(t2 - t1);
+  }
+
 private:
   LiquidCrystal lcd;
   char **lines;
