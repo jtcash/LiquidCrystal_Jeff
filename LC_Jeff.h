@@ -7,7 +7,11 @@
 #include "Printable.h"
 
 // Made for a 16x2 LCD Display
-
+/* TODO:
+ *  - Figure out how to optimally make each line array hold 80 characters
+ *  in order to accomodate the ram of the display and match the default implementation  
+ *  - Find a way to implement rightToLeft and leftToRight
+ */
 
 //#include <string.h>
 
@@ -30,7 +34,7 @@
 // compatible LCD drivers
 
 #define INITIALIZE_LIST initialized(false), cols(0), rows(0), cursorX(0), cursorY(0),\
-showCursor(false), showBlink(false)
+showCursor(false), showBlink(false), notDisplayed(false), scrollTrick(0)
 #define WARN_UNIMPLEMENTED() \
 Serial.print(F("WARNING: called unimplemented function:\n\t"));\
 Serial.println(__PRETTY_FUNCTION__)
@@ -88,6 +92,9 @@ Serial.println((byte)x[n-1]);
   
   void begin(uint8_t col, uint8_t row, uint8_t charsize = LCD_5x8DOTS){
     lcd.begin(col, row, charsize);
+    beginSetup(col, row);
+  }
+  void beginSetup(uint8_t col, uint8_t row){
     if(initialized){
       // If it's already intitialized, delete the line arrays
       //if the cols or rows differ, and then reallocate them
@@ -98,7 +105,6 @@ Serial.println((byte)x[n-1]);
         }
         delete[] lines;
         delete[] slines;
-        
       }
     } else {
       lines = new char*[row];
@@ -111,7 +117,6 @@ Serial.println((byte)x[n-1]);
     }
 
     // Clear the line arrays
-    //printArray(lines[0], width); printArray(lines[1], width);
     for(int i=0; i<row; ++i){
       memset(lines[i], ' ', col);
       memset(slines[i], ' ', col);
@@ -143,24 +148,67 @@ Serial.println((byte)x[n-1]);
   }
 
   
-  inline void noDisplay(){ WARN_UNIMPLEMENTED(); lcd.noDisplay(); }
+  inline void noDisplay(){ 
+    if(!notDisplayed){
+      lcd.noDisplay();
+      notDisplayed = true;
+    }
+//    WARN_UNIMPLEMENTED(); lcd.noDisplay(); 
+  }
 
-  inline void display(){ WARN_UNIMPLEMENTED(); lcd.display(); }
+  inline void display(){ 
+    if(notDisplayed){
+      lcd.display();
+      notDisplayed = false;
+//      WARN_UNIMPLEMENTED(); lcd.display(); }
+    }
+  }
 
-  inline void noBlink(){ WARN_UNIMPLEMENTED(); lcd.noBlink(); }
+  inline void noBlink(){ 
+    if(showBlink){
+      lcd.noBlink();
+      showBlink = false;
+//     WARN_UNIMPLEMENTED(); lcd.noBlink(); }
+    }
+  }
 
-  inline void blink(){ WARN_UNIMPLEMENTED(); lcd.blink(); }
+  inline void blink(){ 
+    if(!showBlink){
+      lcd.blink();
+      showBlink = true;
+//      WARN_UNIMPLEMENTED(); lcd.blink(); }
+    }
+  }
 
-  inline void noCursor(){ WARN_UNIMPLEMENTED(); lcd.noCursor(); }
+  inline void noCursor(){ 
+    if(showCursor){
+      lcd.noCursor();
+      showCursor = false;
+//      WARN_UNIMPLEMENTED(); lcd.noCursor(); }
+    }
+  }
 
-  inline void cursor(){ WARN_UNIMPLEMENTED(); lcd.cursor(); }
+  inline void cursor(){ 
+    if(!showCursor){
+      lcd.cursor();
+      showCursor = true;
+//      WARN_UNIMPLEMENTED(); lcd.cursor(); }
+    }
+  }
 
-  inline void scrollDisplayLeft(){ WARN_UNIMPLEMENTED(); lcd.scrollDisplayLeft(); }
-
-  inline void scrollDisplayRight(){ WARN_UNIMPLEMENTED(); lcd.scrollDisplayRight(); }
-
+  // Scrolling left and right is currently unsupported, but is under development. I just
+  // need to find a decent way to deal with the fact that I'd need a total of 160bytes of
+  // ram just for the line arrays to implement this. Maybe could make a function to setup
+  // for scrolling, which would do something similar to this->begin(40,2), without actually
+  // calling the lcd's begin(). That could trick my implementation into supporting scrolling.
+  // There should be better ways of doing this, however.
+  inline void scrollDisplayLeft(){ WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayLeft();*/ }
+  inline void scrollDisplayRight(){ WARN_UNIMPLEMENTED(); /*lcd.scrollDisplayRight();*/ }
+  
+  // Changing text direction is currently unsupported, partly because of the strange way
+  // the default library handles it. For some reason, if you write chars rightToLeft
+  // from (0,0), it will only write over characters [0,7] and never touch [8,39]
   inline void leftToRight(){ WARN_UNIMPLEMENTED(); lcd.leftToRight(); }
-
   inline void rightToLeft(){ WARN_UNIMPLEMENTED(); lcd.rightToLeft(); }
 
   inline void autoscroll(){ WARN_UNIMPLEMENTED(); lcd.autoscroll(); }
@@ -225,15 +273,9 @@ Serial.println((byte)x[n-1]);
     return print((const char*) str);
   }
   inline size_t print(const String &s){
-    //return write(s.c_str(), s.length());
-    const char *cstr = s.c_str();
-    uint8_t n = 0; // TODO: Check if I even need to count the number of bytes written
-    // And if i can assume that write will always return 1;
-    while(*cstr) // TODO: See if this is an optimal way to iterate.
-      n += write(*cstr++); //the compiler should be able to fully optimize this
-    //WARN_UNIMPLEMENTED();
-    cursorX += n;
-    return n;
+    // For now, just be lazy and use the print(const char*)
+    // Later, maybe use the size() function to optimize
+    return print(s.c_str());
   }
   
   inline size_t print(char c){
@@ -250,7 +292,8 @@ Serial.println((byte)x[n-1]);
 
   
   inline size_t print(unsigned char n, int base = DEC){
-    if(base < 2) return write(n);// Used to be ==0, but changed it to <2 for simplicity
+    if(base < 2) return 0; // Shitty fallback behavior, different than
+    //the default implementation's fallbacks
     char buf[8*sizeof(unsigned char) + 1];
     char *str = buf + sizeof(buf) - 1;
     *str = '\0';
@@ -266,8 +309,8 @@ Serial.println((byte)x[n-1]);
   }
   
   inline size_t print(unsigned int n, int base = DEC){
-    if(base < 2) return (uint8_t)n; // Shitty fallback behavior, slightly
-    // different than the default implementation's fallbacks
+    if(base < 2) return 0; // Shitty fallback behavior, different than
+    //the default implementation's fallbacks
     char buf[8*sizeof(unsigned int) + 1];
     char *str = buf + sizeof(buf) - 1;
     *str = '\0';
@@ -287,8 +330,8 @@ Serial.println((byte)x[n-1]);
   }
 
   inline size_t print(unsigned long n, int base = DEC){
-    if(base < 2) return (uint8_t)n; // Shitty fallback behavior, slightly
-    // different than the default implementation's fallbacks
+    if(base < 2) return 0; // Shitty fallback behavior, different than
+    //the default implementation's fallbacks
     char buf[8*sizeof(unsigned long) + 1];
     char *str = buf + sizeof(buf) - 1;
     *str = '\0';
@@ -550,9 +593,14 @@ private:
   uint8_t rows;    // Number of rows in LCD
   uint8_t cursorX; // Current x location of LCD cursor
   uint8_t cursorY; // Current y location of LCD cursor
+  uint8_t maxX;    // The max x position, LCD_DDRAM_BYTES/rows
+
 
   bool showCursor;
   bool showBlink;
+  bool notDisplayed;
+
+  uint8_t scrollTrick;
 
   // Now implement all of the LiquidCrystal methods as inlines and then start optimizing
     
