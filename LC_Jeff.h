@@ -18,6 +18,7 @@ extern void printMem();
  *  - Implement autoscroll for when scroll is enabled. Should be as simple as calling
  *  scrollDisplayLeft when the cursor is at the right of the screen, but it wont be
  *  that simple in practice.
+ *  - Figure out how to optimize for when every digit on the display changes. 
  */
 
 //#include <string.h>
@@ -375,8 +376,24 @@ Serial.println((byte)x[n-1]);
       return print('-') + print( (unsigned int)n*-1, base );
     return print( (unsigned int)n, base );
   }
-
-  inline size_t print(unsigned long n, int base = DEC){
+  
+  inline size_t print(long n){
+    if(n<0) return print('-') + print((unsigned long)-n);
+    return print((unsigned long)n);
+  }
+  inline size_t print(unsigned long n){
+    char buf[8*sizeof(unsigned long) + 1];
+    char *str = buf + sizeof(buf) - 1;
+    *str = '\0';
+    do {
+      unsigned long m = n;
+      n /= 10;
+      char c = m - 10*n; // get the last digit of n;
+      *--str = c < 10 ? c + '0' : c + 'A' - 10; // write it into str
+    } while(n);
+    return print(str);
+  }
+  inline size_t print(unsigned long n, int base){
     if(base < 2) return 0; // Shitty fallback behavior, different than
     //the default implementation's fallbacks
     char buf[8*sizeof(unsigned long) + 1];
@@ -391,7 +408,7 @@ Serial.println((byte)x[n-1]);
 
     return print(str);
   }
-  inline size_t print(long n, int base = DEC) {
+  inline size_t print(long n, int base) {
     if(n<0)
       return print('-') + print( (unsigned long)n*-1, base );
     return print( (unsigned long)n, base );
