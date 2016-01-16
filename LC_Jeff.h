@@ -1,6 +1,7 @@
 #ifndef LC_Jeff_h
 #define LC_Jeff_h
 
+
 #include "LiquidCrystal.h"
 #include "Arduino.h"
 #include "Print.h"
@@ -376,7 +377,6 @@ Serial.println((byte)x[n-1]);
       return print('-') + print( (unsigned int)n*-1, base );
     return print( (unsigned int)n, base );
   }
-  
   inline size_t print(long n){
     if(n<0) return print('-') + print((unsigned long)-n);
     return print((unsigned long)n);
@@ -559,7 +559,6 @@ Serial.println((byte)x[n-1]);
 ///////////////////////////////////////////////////////////////////////
 
   
-
   // updates the LCD to show changes since last update. Needs to be called manually
   inline void update(){ // TODO: Optimize this
     // Iterate through the rows, grabbing the line and sline arrays
@@ -581,6 +580,9 @@ Serial.println((byte)x[n-1]);
     }
     setCursor(oldCursorX, oldCursorY);
   }
+  
+
+
 
 
   

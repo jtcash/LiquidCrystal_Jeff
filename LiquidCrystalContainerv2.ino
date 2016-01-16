@@ -1,26 +1,142 @@
+
 #include <LiquidCrystal.h>
 //#include "LiquidCrystal_O.h"
 #include "TestSpeed.h"
 #include "LC_Jeff.h"
+#include "LC_Opt.h"
 #define LCD_PINS 12, 11, 5, 4, 3, 2
 
 
 #define SERIAL_BAUD 230400
 //#define LCD_PINS 22, 23, 24, 25, 26, 27
 //////////////////////////////////////////////
-//MAKE A CLASS THAT IS JUST AN EXTENTION OF THE LIQUIDCRYSTAL CLASS, AND OVERRIDE/HIDES SOME OF THE FUNCTIONS 
+//MAKE A CLASS THAT IS JUST3 AN EXTENTION OF THE LIQUIDCRYSTAL CLASS, AND OVERRIDE/HIDES SOME OF THE FUNCTIONS 
 ///////////////////////////////////////////////
 LiquidCrystal lcd_old(LCD_PINS);
 //LiquidCrystal_O lcd(LCD_PINS);
-LC_Jeff lcd(LCD_PINS);
+//LC_Jeff lcd(LCD_PINS);
+LC_Opt lcd(LCD_PINS);
 
 
 TestSpeed tester;
 //LCDisplay display(LCD_PINS);
 
+void testOpt(){
+//  LC_Opt lcd(LCD_PINS);
+
+  lcd.printMem();
+  
+  lcd.write('l');
+  lcd.write('o');
+  lcd.write('z');
+  lcd.printMem();
+  lcd.update();
+  delay(1000);
+  lcd.printMem();
+  lcd.setCursor(0,1);
+  lcd.write('j');
+  lcd.update();
+  delay(1000);
+  lcd.print(F("TEST"));
+  lcd.print("0123");
+  lcd.update();
+  delay(500);
+  
+  lcd.print("WTF");
+  lcd.printMem();
+  lcd.update();
+  lcd.printMem();
+  
+  delay(1000);
+  lcd.clear();
+  lcd.update();
+
+  
+
+//  lcd.printMem();
+}
+
+#define TEST_TIME(f) Serial.flush(); t0=micros(); f; t1=micros(); Serial.print(F(#f));\
+Serial.print(F(":\t")); Serial.print(t1-t0); Serial.println(F(" us"))
+void testUpdate(){
+  
+  unsigned long t0,t1;
+  TEST_TIME(lcd.update());
+  TEST_TIME(lcd.print(F("0123456789012345")));
+  lcd.setCursor(0,1);
+  lcd.print(F("0123456789012345"));
+  TEST_TIME(lcd.update());
+  TEST_TIME(lcd.update());
+  lcd.printMem();
+  lcd.update();
+
+  
+  
+}
+void testClear(){
+  lcd.printMem();
+  lcd.print(F("FUCKFUCKFUCK"));
+  lcd.setCursor(0,1);
+  lcd.print(F("01234566"));
+  lcd.printMem();
+  lcd.update();
+  lcd.printMem();
+  delay(1000);
+  lcd.clear();
+  lcd.update();
+  lcd.printMem();
+  
+  
+}
+void timeUpdate(){
+  unsigned long t0,t1;
+  uint8_t reps = 255;
+  t0=micros();
+  do{
+    lcd.print(F("0123456789012345"));
+    lcd.setCursor(0,1);
+    lcd.print(F("0123456789012345"));
+    lcd.update();
+    lcd.print(F("1234567890123456"));
+    lcd.setCursor(0,1);
+    lcd.print(F("1234567890123456"));
+    lcd.update();
+  }while(--reps);
+  t1=micros();
+
+  Serial.print(t1-t0); Serial.print(F(",\t"));
+  Serial.flush();
+  lcd.print(F("0123456789012345"));
+  t0=micros();
+  do{
+    lcd.print(F("0123456789012345"));
+    lcd.setCursor(0,1);
+    lcd.print(F("0123456789012345"));
+    lcd.update();
+    lcd.print(F("0123456789012345"));
+    lcd.setCursor(0,1);
+    lcd.print(F("0123456789012345"));
+    lcd.update();
+  }while(--reps);
+  t1=micros();
+
+  Serial.println(t1-t0);
+
+  
+}
 void setup() {
   Serial.begin(SERIAL_BAUD);
 
+//  testClear();
+//  testUpdate();
+//  testOpt();
+//  lcd.printMem();
+//  tester.fuck(lcd);
+    timeUpdate();
+//  tester.runTest(lcd_old, lcd);
+//  lcd.clear();
+//  lcd.update();
+  
   //#define TESTY loltest
   // put your setup code here, to run once
   //lcd.begin(16,2);
@@ -28,7 +144,7 @@ void setup() {
   //lcd.write("test");  
   //testPrintNumbers();
   //basicTest();
-  tester.runTest(lcd_old, lcd);
+  
  /* lcd.begin(16, 2);
   lcd.clear();
   lcd.print("HI");
